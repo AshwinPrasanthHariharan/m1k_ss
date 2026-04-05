@@ -1,0 +1,11 @@
+smu: utility for managing M1K devices
+
+ -h, --help                   print this help message and exit
+ --version                    show libsmu version
+ -l, --list-devices           list supported devices currently attached to the system
+ -p, --hotplug-devices        simple session device hotplug testing
+ -s, --stream-samples         stream samples to stdout from a single attached device
+ -d, --display-calibration    display calibration data from all attached devices
+ -r, --reset-calibration      reset calibration data to the defaults on all attached devices
+ -w, --write-calibration <cal file> write calibration data to a single attached device
+ -f, --flash <firmware image> flash firmware image to a single attached device

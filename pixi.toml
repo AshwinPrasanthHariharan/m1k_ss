@@ -12,3 +12,7 @@ libsmu = ">=1.0.3,<2"
 ipykernel = ">=7.2.0,<8"
 matplotlib = ">=3.10.8,<4"
 numpy = ">=2.2.6,<3"
+pip = ">=26.0.1,<27"
+
+[pypi-dependencies]
+m1k-utils = { path = "/home/Ashwin/M1k/m1k_utils", editable = true }
