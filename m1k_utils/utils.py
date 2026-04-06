@@ -6,7 +6,7 @@ import atexit
 import time
 from pysmu import Session, Mode
 import gc
-
+import numpy as np
 # =========================
 # Channel Wrapper
 # =========================
@@ -26,16 +26,8 @@ class Channel:
         self._ch.flush()
         self._ch.write([v],-1)
     # ---------- INPUT ----------
-    def dc(self, v):
-        """Set DC voltage"""
-        self._ensure_running()
-        self._ch.flush()
-        self._ch.write([v],-1)
-
     def __str__(self):
         return f"Channel(mode={self._ch.mode})"
-
-
 # =========================
 # Device Wrapper
 # =========================
