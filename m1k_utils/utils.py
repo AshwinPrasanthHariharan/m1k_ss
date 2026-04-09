@@ -23,9 +23,14 @@ class Channel:
     def dc(self, v):
         """Set DC voltage"""
         self._ensure_running()
-        self._ch.flush()
+        self._ch.flush(0,True)
         self._ch.write([v],-1)
     # ---------- INPUT ----------
+    def dcr(self,i=100):
+        """Read DC voltage"""
+        self._ensure_running()
+        self._ch.flush(-1,True)
+        return np.average(k[0] for k in self._ch.read(i))
     def __str__(self):
         return f"Channel(mode={self._ch.mode})"
 # =========================
