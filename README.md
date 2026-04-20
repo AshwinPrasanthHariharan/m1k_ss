@@ -234,7 +234,7 @@ Core signal processing and system analysis:
 
 ---
 
-## 📁 Project Structure (Expected)
+## 📁 Project Structure 
 
 ```id="g3f3z8"
 project/
