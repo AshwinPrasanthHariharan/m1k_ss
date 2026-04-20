@@ -11,26 +11,49 @@ import numpy as np
 # Channel Wrapper
 # =========================
 class Channel:
-    def __init__(self, ch, ctrl):
+    def __init__(self, ch, ctrl,dev):
         self._ch = ch
         self.ctrl = ctrl
-
-    def _ensure_running(self):
-        if not self.ctrl.running:
-            raise RuntimeError("Session not started")
+        self.dev = dev
 
     # ---------- OUTPUT ----------
     def dc(self, v):
         """Set DC voltage"""
-        self._ensure_running()
-        self._ch.flush(0,True)
-        self._ch.write([v],-1)
+        last_error = None
+        for _ in range(3):
+            try:
+                self._ch.flush()
+                self._ch.write([v],-1)
+                return
+            except Exception as err:
+                last_error = err
+                # Recover from transient queue contention while streaming.
+                self.dev.flush(-1,True)
+                time.sleep(0.02)
+        raise last_error
     # ---------- INPUT ----------
     def dcr(self,i=100):
         """Read DC voltage"""
-        self._ensure_running()
-        self._ch.flush(-1,True)
-        return np.average(k[0] for k in self._ch.read(i))
+        self.dev.flush(-1,True)
+        samples = []
+        for _ in range(3):
+            time.sleep(0.02)
+            samples = self._ch.read(i)
+            if samples:
+                break
+        if not samples:
+            return 0.0
+
+        values = []
+        for sample in samples:
+            try:
+                value = float(sample[0])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if np.isfinite(value):
+                values.append(value)
+
+        return float(np.mean(values)) if values else 0.0
     def __str__(self):
         return f"Channel(mode={self._ch.mode})"
 # =========================
@@ -45,8 +68,8 @@ class Device:
         self.fw = dev.fwver
         self.hw = dev.hwver
 
-        self.ch_a = Channel(dev.channels['A'], ctrl)
-        self.ch_b = Channel(dev.channels['B'], ctrl)
+        self.ch_a = Channel(dev.channels['A'], ctrl,dev)
+        self.ch_b = Channel(dev.channels['B'], ctrl,dev)
 
     def led(self, val):
         self._dev.set_led(val)
