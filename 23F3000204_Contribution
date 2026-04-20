@@ -1,0 +1,118 @@
+Abstract 
+
+This project focuses on analyzing the frequency response and voltage-current (VI) characteristics of electrical systems using the ADALM1000 (M1K) and a Python-based measurement framework. The approach involves automated signal generation, data acquisition, and analysis using tools such as PySMU, NumPy, and Matplotlib. In addition to basic measurements, the project incorporates FFT-based frequency-domain analysis and transfer function estimation to better understand system behavior. Experimental validation is planned using simple circuits such as RC filters. The system aims to bridge theoretical concepts from Signals and Systems with practical observations, while also considering limitations such as noise and hardware constraints.
+
+1. Introduction
+
+This project lies in the domain of experimental signal processing and system analysis. Understanding how systems respond to different input signals is essential in electronics and signal processing applications. The project focuses on studying system behavior using both time-domain and frequency-domain techniques, supported by programmable hardware.
+
+1.1 Motivation
+
+The motivation is to connect theoretical concepts such as frequency response and system representation with real-world experimental data using programmable tools.
+
+1.2 Scope of the Project
+
+In scope:
+
+Frequency response analysis
+VI characteristic analysis
+FFT-based analysis
+Transfer function estimation
+Basic validation using simple circuits
+
+Out of scope:
+
+Advanced real-time systems
+Complex multi-stage DSP systems
+2. Problem Statement
+
+The project aims to experimentally analyze system behavior by obtaining frequency response and VI characteristics using programmable instrumentation. It also aims to extend this analysis using FFT-based methods and transfer function estimation to better understand system properties.
+
+3. Goals and Objectives
+3.1 Primary Goal
+
+To analyze and characterize electrical systems using experimental signal processing techniques.
+
+3.2 Specific Objectives
+To measure frequency response of basic circuits
+To analyze VI characteristics of components
+To perform FFT-based signal analysis
+To estimate transfer function of systems
+To validate results using simple circuits
+4. Methodology
+4.1 System Overview
+
+The system consists of:
+
+ADALM M1K for signal generation and acquisition
+Python-based processing pipeline
+Visualization tools
+4.2 Signal Processing Techniques Used
+4.2.1 Filtering
+
+Basic filtering behavior will be observed through circuit response (RC filter).
+
+4.2.2 Transform-Domain Analysis
+
+FFT will be used to analyze signals in the frequency domain.
+
+4.2.3 Additional Techniques
+
+Transfer function estimation using input-output signals.
+
+4.3 Theoretical Background
+
+Basic concepts from Signals and Systems such as frequency response, FFT, and system representation.
+
+5. Implementation Details
+5.1 Tools and Technologies
+Programming Language: Python
+Libraries: NumPy, Matplotlib, PySMU
+Hardware: ADALM1000 (M1K)
+5.2 System Architecture
+Data acquisition module
+Signal processing module
+Visualization module
+5.3 Key Algorithms / Pseudocode
+
+
+
+Acquire input signal
+Acquire output signal
+Compute FFT of signals
+Estimate transfer function
+Plot results
+5.4 User Interface
+
+Basic plotting using Python libraries (Matplotlib).
+
+6. Problems Faced and Solutions
+6.1 Problem 1: Hardware interfacing setup
+
+Issue: Initial setup and interfacing of the ADALM M1K with the system.
+Solution: Successfully tested interfacing of the ADALM kit with Linux environment.
+
+7. Results and Discussion
+7.1 Experimental Setup
+
+Initial setup includes ADALM M1K and Python-based control environment.
+
+
+8. Conclusions
+8.1 Summary of Contributions
+
+Basic framework setup for signal acquisition and processing.
+
+8.2 Limitations
+
+Work is currently in early stage.
+
+8.3 Future Work
+Complete FFT analysis
+Implement transfer function estimation
+Perform validation with circuits
+
+9. Individual Contribution
+Tested interfacing of ADALM 1000 with Linux environment
+Set up initial development environment for data acquisition
+Contributed to defining system workflow and methodology
