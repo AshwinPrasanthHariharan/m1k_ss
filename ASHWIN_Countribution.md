@@ -32,12 +32,15 @@ This README is written for evaluation. Everything listed below is part of my pro
 - [examples/read-write.py](examples/read-write.py): Noncontinuous read/write loop reference.
 - [examples/read.py](examples/read.py): Noncontinuous read reference.
 
-## Instructions for Evaluator
+## Instructions for Evaluator (GitHub-Only Review)
 
-### 1) Environment validation
-1. Open this folder in VS Code.
-2. Confirm Python interpreter points to [.vscode/settings.json](.vscode/settings.json) path.
-3. Verify dependency declaration in [pixi.toml](pixi.toml) and lock file in [pixi.lock](pixi.lock).
+This evaluation can be completed directly in GitHub by reading code and notebook outputs.
+No local setup or execution is required for primary assessment.
+
+### 1) Environment and reproducibility evidence (code review only)
+1. Review [.vscode/settings.json](.vscode/settings.json) for interpreter configuration.
+2. Review [pixi.toml](pixi.toml) for declared dependencies.
+3. Review [pixi.lock](pixi.lock) for locked, reproducible dependency resolution.
 
 ### 2) Code structure validation
 1. Open [m1k_utils/utils.py](m1k_utils/utils.py) and review the three main classes:
@@ -46,14 +49,15 @@ This README is written for evaluation. Everything listed below is part of my pro
   - `SMU` for session lifecycle and scan/start/stop flow
 2. Confirm package export path in [m1k_utils/__init__.py](m1k_utils/__init__.py).
 
-### 3) Functional workflow validation (notebook)
-1. Open [smu_control.ipynb](smu_control.ipynb).
-2. Run cells top-to-bottom to verify:
+### 3) Functional workflow validation from notebook content/output
+1. Open [smu_control.ipynb](smu_control.ipynb) in GitHub.
+2. Verify the workflow order by reading cells and rendered outputs:
   - Session/device initialization
   - Channel mode selection
   - Write/read sanity check
   - Write-vs-read calibration sweep
-  - Linear fit and plotted calibration behavior
+  - Linear fit values and calibration plots
+3. Use Markdown sections in the notebook as guidance for the intended flow.
 
 ### 4) Calibration artifact validation
 1. Inspect [m1k.cal](m1k.cal) for channel calibration entries.
@@ -66,3 +70,4 @@ This README is written for evaluation. Everything listed below is part of my pro
 
 - This workspace is organized so the notebook demonstrates practical behavior while the utility package provides reusable implementation.
 - Generated directories such as [.pixi](.pixi/) and [m1k_utils/m1k_utils.egg-info](m1k_utils/m1k_utils.egg-info/) may appear depending on local environment setup.
+- For GitHub-space evaluation, prioritize file-level logic in [m1k_utils/utils.py](m1k_utils/utils.py) and rendered results in [smu_control.ipynb](smu_control.ipynb).
