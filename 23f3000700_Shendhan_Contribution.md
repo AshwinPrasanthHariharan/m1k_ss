@@ -106,7 +106,6 @@
 
   * **Project proposal** (Problem, Objectives, Methodology)
   * **System workflow documentation**
-  * **README structure for repository**
 * Defined project as:
 
   > A lab-style measurement system implemented through a spreadsheet interface with a structured backend
