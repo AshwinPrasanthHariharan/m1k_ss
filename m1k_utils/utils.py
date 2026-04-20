@@ -19,6 +19,10 @@ class Channel:
     # ---------- OUTPUT ----------
     def dc(self, v):
         """Set DC voltage"""
+        if not self.ctrl.running:
+            self.ctrl.start(0)
+            self.ctrl.running = True
+            print("[SMU] Auto-started session for DC output")
         last_error = None
         for _ in range(3):
             try:
