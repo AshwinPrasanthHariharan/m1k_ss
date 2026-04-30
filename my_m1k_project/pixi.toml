@@ -1,7 +1,7 @@
 [workspace]
 authors = ["Ashwin Prasanth Hariharan <ashwinprasanth06@gmail.com>"]
 channels = ["conda-forge"]
-name = "m1k_ss"
+name = "my_m1k_project"
 platforms = ["linux-64"]
 version = "0.1.0"
 
@@ -9,4 +9,8 @@ version = "0.1.0"
 
 [dependencies]
 python = ">=3.14.4,<3.15"
+setuptools = ">=82.0.1,<83"
 pip = ">=26.0.1,<27"
+
+[pypi-dependencies]
+pysmu = { git = "https://github.com/analogdevicesinc/libsmu.git", subdirectory = "bindings/python" }

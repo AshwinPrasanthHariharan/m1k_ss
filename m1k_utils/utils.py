@@ -20,14 +20,16 @@ class Channel:
     def dc(self, v):
         """Set DC voltage"""
         if not self.ctrl.running:
-            self.ctrl.start(0)
-            self.ctrl.running = True
+            print("[SMU] Session not running → auto-starting for DC output")
+            self.ctrl.safe_start()
             print("[SMU] Auto-started session for DC output")
         last_error = None
         for _ in range(3):
             try:
+                print(f"[SMU] Writing DC value: {v}")
                 self._ch.flush()
                 self._ch.write([v],-1)
+                print("[SMU] DC write complete")
                 return
             except Exception as err:
                 last_error = err

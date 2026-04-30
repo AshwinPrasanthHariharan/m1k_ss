@@ -17,6 +17,7 @@ if __name__ == '__main__':
     session = Session()
 
     if not session.devices:
+        print('No devices found')
         sys.exit(1)
 
     while True:
