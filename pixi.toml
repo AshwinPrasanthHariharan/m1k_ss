@@ -8,5 +8,6 @@ version = "0.1.0"
 [tasks]
 
 [dependencies]
-python = ">=3.14.4,<3.15"
+python = ">=3.9.4,<3.11"
 pip = ">=26.0.1,<27"
+libsmu = ">=1.0.3,<2"

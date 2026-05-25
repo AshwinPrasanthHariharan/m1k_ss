@@ -11,32 +11,24 @@ import numpy as np
 # Channel Wrapper
 # =========================
 class Channel:
-    def __init__(self, ch, ctrl,dev):
-        self._ch = ch
+    def __init__(self, ch_name, ctrl,dev_serial):
+        self._ch_name = ch_name
         self.ctrl = ctrl
-        self.dev = dev
+        self.dev_serial = dev_serial
 
     # ---------- OUTPUT ----------
+    @property
+    def dev(self):
+        return self.ctrl.get(self.dev_serial)
+    @property
+    def _ch(self):
+        return self.ctrl.get(self.dev_serial).channels[self._ch_name]
     def dc(self, v):
         """Set DC voltage"""
-        if not self.ctrl.running:
-            print("[SMU] Session not running → auto-starting for DC output")
-            self.ctrl.safe_start()
-            print("[SMU] Auto-started session for DC output")
-        last_error = None
-        for _ in range(3):
-            try:
-                print(f"[SMU] Writing DC value: {v}")
-                self._ch.flush()
-                self._ch.write([v],-1)
-                print("[SMU] DC write complete")
-                return
-            except Exception as err:
-                last_error = err
-                # Recover from transient queue contention while streaming.
-                self.dev.flush(-1,True)
-                time.sleep(0.02)
-        raise last_error
+        if not self._ch.mode == Mode.SVMI:
+            self._ch.mode = Mode.SVMI
+        self.dev.flush(-1,True)
+        self._ch.constant(v)
     # ---------- INPUT ----------
     def dcr(self,i=100):
         """Read DC voltage"""
@@ -67,16 +59,17 @@ class Channel:
 # =========================
 class Device:
     def __init__(self, dev, ctrl):
-        self._dev = dev
         self.ctrl = ctrl
 
         self.serial = dev.serial
         self.fw = dev.fwver
         self.hw = dev.hwver
 
-        self.ch_a = Channel(dev.channels['A'], ctrl,dev)
-        self.ch_b = Channel(dev.channels['B'], ctrl,dev)
-
+        self.ch_a = Channel("A", ctrl,dev.serial)
+        self.ch_b = Channel("B", ctrl,dev.serial)
+    @property
+    def _dev(self):
+        return self.ctrl.get(self.serial)
     def led(self, val):
         self._dev.set_led(val)
 
@@ -92,7 +85,6 @@ class SMU:
         
         self.session = None
         self.running = False
-        self.devices = []
 
         # -------- STEP 1: kill stale sessions --------
         self._cleanup_sessions()
@@ -123,25 +115,14 @@ class SMU:
         signal.signal(signal.SIGINT, self._handle_exit)
         signal.signal(signal.SIGTERM, self._handle_exit)
         atexit.register(self.stop)
-
+    @property
+    def devices(self):
+        return [Device(dev, self) for dev in self.session.devices]
     # ---------- CORE ----------
     def scan(self):
-        """Scan and rebuild device list"""
-        if self.running:
-            raise RuntimeError("Stop session before scanning")
-
-        try:
-            self.session.scan()
-        except:
-            pass  # some versions auto-scan
-
-        self.devices = [
-            Device(dev, self) for dev in self.session.devices
-        ]
-
-        if not self.devices:
-            print("[SMU] No devices found")
-
+        self.session.flush()
+        self.session.__dealloc__()
+        self.session=Session()
     def start(self,i=0):
         if not self.running:
             self.session.start(i)
@@ -164,10 +145,10 @@ class SMU:
         for obj in gc.get_objects():
             try:
                 if obj.__class__.__name__ == "pysmu.libsmu.Session":
-                    obj.end()
+                    obj._close()
                     killed += 1
             except:
-                pass
+                print("[SMU] Warning: Failed to close a session object during cleanup")
 
         if killed:
             print(f"[SMU] Cleaned {killed} stale session(s)")
@@ -204,7 +185,7 @@ class SMU:
         return [d.serial for d in self.devices]
 
     def get(self, serial):
-        for d in self.devices:
+        for d in self.session.devices:
             if d.serial == serial:
                 return d
         raise ValueError("Device not found")
