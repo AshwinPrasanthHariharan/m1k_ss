@@ -81,33 +81,13 @@ class Device:
 # SMU Manager
 # =========================
 class SMU:
-    def __init__(self):
+    def __init__(self,ses):
         
         self.session = None
         self.running = False
-
+        self.session = ses
         # -------- STEP 1: kill stale sessions --------
         self._cleanup_sessions()
-
-        # -------- STEP 2: try init --------
-        try:
-            self.session = Session()
-
-        except Exception:
-            print("[SMU] Device busy → retrying after cleanup...")
-
-            # second cleanup (just in case)
-            self._cleanup_sessions()
-
-            # retry once
-            try:
-                self.session = Session()
-            except Exception as e:
-                raise RuntimeError(
-                    "SMU init failed even after cleanup.\n"
-                    "Try restarting kernel or unplugging device."
-                ) from e
-
         # -------- STEP 3: scan devices --------
         self.scan()
 
@@ -120,9 +100,7 @@ class SMU:
         return [Device(dev, self) for dev in self.session.devices]
     # ---------- CORE ----------
     def scan(self):
-        self.session.flush()
-        self.session.__dealloc__()
-        self.session=Session()
+        self.session.scan()
     def start(self,i=0):
         if not self.running:
             self.session.start(i)
