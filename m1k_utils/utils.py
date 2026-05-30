@@ -1,212 +1,232 @@
-# smu.py
+"""Simple calibration manager for ADALM1000-style calibration files.
 
-import signal
-import sys
-import atexit
-import time
-from pysmu import Session, Mode
-import gc
-import numpy as np
-# =========================
-# Channel Wrapper
-# =========================
-class Channel:
-    def __init__(self, ch_name, ctrl,dev_serial):
-        self._ch_name = ch_name
-        self.ctrl = ctrl
-        self.dev_serial = dev_serial
+This module provides a lightweight `CalibrationManager` that either loads an
+existing calibration file (preserving block order) or initialises a default
+ordered dictionary of calibration blocks. It can convert the in-memory
+dictionary to the ADALM1000 calibration file text format and save it.
+"""
 
-    # ---------- OUTPUT ----------
-    @property
-    def dev(self):
-        return self.ctrl.get(self.dev_serial)
-    @property
-    def _ch(self):
-        return self.ctrl.get(self.dev_serial).channels[self._ch_name]
-    def dc(self, v):
-        """Set DC voltage"""
-        if not self._ch.mode == Mode.SVMI:
-            self._ch.mode = Mode.SVMI
-        self.dev.flush(-1,True)
-        self._ch.constant(v)
-    # ---------- INPUT ----------
-    def dcr(self,i=100):
-        """Read DC voltage"""
-        self.dev.flush(-1,True)
-        samples = []
-        for _ in range(3):
-            time.sleep(0.02)
-            samples = self._ch.read(i)
-            if samples:
-                break
-        if not samples:
-            return 0.0
+from __future__ import annotations
 
-        values = []
-        for sample in samples:
-            try:
-                value = float(sample[0])
-            except (TypeError, ValueError, IndexError):
+from collections import OrderedDict
+from pathlib import Path
+from typing import Iterable, List, OrderedDict as _OD, Sequence, Tuple, Union
+from pysmu import *
+
+CalibrationPoint = Tuple[float, float]
+
+
+class CalibrationManager:
+    """Manage calibration blocks stored in a simple ordered dict view.
+
+    Usage:
+      mgr = CalibrationManager("m1k.cal")
+      mgr.recab("measure v", "a", [(0.0, 0.0), (2.5, 2.5)])
+      mgr.save()
+"""
+
+    DEFAULT_KEYS = [
+        "Channel A, measure V",
+        "Channel A, measure I",
+        "Channel A, source V",
+        "Channel A, source I",
+        "Channel B, measure V",
+        "Channel B, measure I",
+        "Channel B, source V",
+        "Channel B, source I",
+    ]
+
+    # sensible default templates used when initializing or resetting blocks
+    DEFAULT_TEMPLATES = {
+        "v": [(0.0, 0.0), (2.5, 2.5)],
+        "i": [(0.0, 0.0), (0.1, 0.1), (-0.1, -0.1)],
+    }
+
+    def __init__(self, path: Union[str, Path]):
+        self.path = Path(path)
+        self.header: List[str] = ["# ADALM1000 calibration file"]
+        self.blocks: OrderedDict[str, List[CalibrationPoint]] = OrderedDict()
+
+        if not self.path.exists() or self.path.stat().st_size == 0:
+            # empty or missing file — create default ordered blocks using templates
+            for k in self.DEFAULT_KEYS:
+                kind = "v" if "v" in k.lower() else ("i" if "i" in k.lower() else "v")
+                self.blocks[k] = [tuple(x) for x in self.DEFAULT_TEMPLATES.get(kind, [])]
+        else:
+            text = self.path.read_text(encoding="utf-8")
+            parsed = self._parse_text(text)
+            if parsed:
+                self.blocks = parsed
+            else:
+                self.blocks = OrderedDict((k, []) for k in self.DEFAULT_KEYS)
+
+    def _parse_text(self, text: str) -> OrderedDict[str, List[CalibrationPoint]]:
+        blocks: OrderedDict[str, List[CalibrationPoint]] = OrderedDict()
+        current_title: str | None = None
+        current_points: List[CalibrationPoint] = []
+
+        def flush_block() -> None:
+            nonlocal current_title, current_points
+            if current_title is not None:
+                blocks[current_title] = list(current_points)
+            current_title = None
+            current_points = []
+
+        for raw in text.splitlines():
+            line = raw.strip()
+            if not line:
                 continue
-            if np.isfinite(value):
-                values.append(value)
+            if line == "# ADALM1000 calibration file" and current_title is None and not blocks:
+                # file banner, not a calibration block title
+                continue
+            if line.startswith("#"):
+                # start a new block (flush previous if present)
+                flush_block()
+                current_title = line[1:].strip()
+                current_points = []
+                continue
+            if line == "</>":
+                continue
+            if line == "<\\>":
+                flush_block()
+                continue
+            # expect a point like <0.0000, 0.0000>
+            if line.startswith("<") and line.endswith(">"):
+                inner = line[1:-1].strip()
+                if "," in inner:
+                    left, right = [p.strip() for p in inner.split(",", 1)]
+                    try:
+                        current_points.append((float(left), float(right)))
+                    except ValueError:
+                        # skip malformed numeric lines
+                        continue
+                continue
+            # ignore unknown lines
 
-        return float(np.mean(values)) if values else 0.0
-    def __str__(self):
-        return f"Channel(mode={self._ch.mode})"
-# =========================
-# Device Wrapper
-# =========================
-class Device:
-    def __init__(self, dev, ctrl):
-        self.ctrl = ctrl
+        # flush at EOF
+        flush_block()
 
-        self.serial = dev.serial
-        self.fw = dev.fwver
-        self.hw = dev.hwver
+        return blocks
 
-        self.ch_a = Channel("A", ctrl,dev.serial)
-        self.ch_b = Channel("B", ctrl,dev.serial)
-    @property
-    def _dev(self):
-        return self.ctrl.get(self.serial)
-    def led(self, val):
-        self._dev.set_led(val)
+    def as_ordered_dict(self) -> _OD[str, List[CalibrationPoint]]:
+        return OrderedDict((title, list(pts)) for title, pts in self.blocks.items())
 
-    def __str__(self):
-        return f"Device {self.serial} | FW:{self.fw} HW:{self.hw}"
+    def to_text(self) -> str:
+        parts: List[str] = []
+        if self.header:
+            parts.extend(self.header)
+            parts.append("")
 
+        for title, points in self.blocks.items():
+            parts.append(f"# {title}")
+            parts.append("</>")
+            for p in points:
+                parts.append("<{:.4f}, {:.4f}>".format(float(p[0]), float(p[1])))
+            parts.append("<\\>")
+            parts.append("")
 
-# =========================
-# SMU Manager
-# =========================
-class SMU:
-    def __init__(self):
-        
-        self.session = None
-        self.running = False
+        return "\n".join(parts).rstrip() + "\n"
 
-        # -------- STEP 1: kill stale sessions --------
-        self._cleanup_sessions()
+    def save(self, path: Union[str, Path] | None = None) -> None:
+        target = Path(path) if path is not None else self.path
+        target.write_text(self.to_text(), encoding="utf-8")
 
-        # -------- STEP 2: try init --------
-        try:
-            self.session = Session()
+    def recab(self, measure: str, channel: str, levels: Iterable[Iterable[float]]) -> None:
+        """Replace a block's points.
 
-        except Exception:
-            print("[SMU] Device busy → retrying after cleanup...")
+        `measure` should include the distinguishing text such as "measure V",
+        "measure I", "source V" or "source I" (case-insensitive). `channel`
+        should be 'a' or 'b'. `levels` is an iterable of (vin, vout) pairs.
+        """
 
-            # second cleanup (just in case)
-            self._cleanup_sessions()
+        key_channel = "Channel A" if str(channel).strip().lower() == "a" else "Channel B"
+        selector = str(measure).strip().lower()
 
-            # retry once
-            try:
-                self.session = Session()
-            except Exception as e:
-                raise RuntimeError(
-                    "SMU init failed even after cleanup.\n"
-                    "Try restarting kernel or unplugging device."
-                ) from e
+        # find candidate blocks that match both channel and selector
+        candidates = [title for title in self.blocks.keys() if key_channel.lower() in title.lower() and selector in title.lower()]
 
-        # -------- STEP 3: scan devices --------
-        self.scan()
+        if not candidates:
+            raise KeyError(f"no calibration block matches channel={channel!r} measure={measure!r}")
+        if len(candidates) > 1:
+            raise ValueError(f"ambiguous selector; multiple blocks match channel={channel!r} measure={measure!r}")
 
-        # cleanup hooks
-        signal.signal(signal.SIGINT, self._handle_exit)
-        signal.signal(signal.SIGTERM, self._handle_exit)
-        atexit.register(self.stop)
-    @property
-    def devices(self):
-        return [Device(dev, self) for dev in self.session.devices]
-    # ---------- CORE ----------
-    def scan(self):
-        self.session.flush()
-        self.session.__dealloc__()
-        self.session=Session()
-    def start(self,i=0):
-        if not self.running:
-            self.session.start(i)
-            self.running = True
-            print("[SMU] Session started")
+        title = candidates[0]
+        self.blocks[title] = [(float(v[0]), float(v[1])) for v in levels]
 
-    def stop(self):
-        if self.running:
-            try:
-                self.session.end()
-            except:
-                pass
-            self.running = False
-            print("[SMU] Session stopped")
+    def get(self, measure: str, channel: str) -> List[CalibrationPoint]:
+        key_channel = "Channel A" if str(channel).strip().lower() == "a" else "Channel B"
+        selector = str(measure).strip().lower()
+        for title, pts in self.blocks.items():
+            if key_channel.lower() in title.lower() and selector in title.lower():
+                return list(pts)
+        raise KeyError(f"no calibration block matches channel={channel!r} measure={measure!r}")
 
-    # ---------- REFRESH ----------
-    def _cleanup_sessions(self):
-        killed = 0
+    def reset_block(self, arg1: str, arg2: str | None = None, points: Iterable[Iterable[float]] | None = None) -> None:
+        """Reset a single calibration block.
 
-        for obj in gc.get_objects():
-            try:
-                if obj.__class__.__name__ == "pysmu.libsmu.Session":
-                    obj._close()
-                    killed += 1
-            except:
-                print("[SMU] Warning: Failed to close a session object during cleanup")
+        Accepts either `(measure, channel)` or `(channel, measure)` order. If
+        `points` is None the block is populated with a sensible default
+        template: voltage blocks get `[(0,0),(2.5,2.5)]`, current blocks get
+        `[(0,0),(0.1,0.1),(-0.1,-0.1)]`.
+        """
 
-        if killed:
-            print(f"[SMU] Cleaned {killed} stale session(s)")
+        if arg2 is None:
+            raise TypeError("reset_block requires two positional arguments: channel and measure (either order)")
 
-        gc.collect()
-        time.sleep(0.3)
-    def refresh(self):
-        """Hard reset session"""
-        print("[SMU] Refreshing...")
+        a = str(arg1).strip().lower()
+        b = str(arg2).strip().lower()
 
-        self.stop()
+        # determine which argument is the channel ('a' or 'b')
+        if a in ("a", "b") and not (b in ("a", "b")):
+            channel = a
+            selector = b
+        elif b in ("a", "b") and not (a in ("a", "b")):
+            channel = b
+            selector = a
+        else:
+            # ambiguous or invalid ordering
+            raise ValueError("cannot determine channel/measure from arguments; provide one channel ('a' or 'b') and one selector like 'measure v'")
 
-        try:
-            del self.session
-        except:
-            pass
+        key_channel = "Channel A" if channel == "a" else "Channel B"
+        sel = selector.lower()
 
-        time.sleep(0.5)
+        candidates = [title for title in self.blocks.keys() if key_channel.lower() in title.lower() and sel in title.lower()]
+        if not candidates:
+            raise KeyError(f"no calibration block matches channel={channel!r} selector={selector!r}")
+        if len(candidates) > 1:
+            raise ValueError(f"ambiguous selector; multiple blocks match channel={channel!r} selector={selector!r}")
 
-        self.session = Session()
-        self.scan()
+        title = candidates[0]
+        if points is None:
+            # choose template based on selector (voltage/current)
+            if "v" in sel or "voltage" in sel:
+                new_pts = [tuple(x) for x in self.DEFAULT_TEMPLATES["v"]]
+            elif "i" in sel or "current" in sel:
+                new_pts = [tuple(x) for x in self.DEFAULT_TEMPLATES["i"]]
+            else:
+                new_pts = []
+        else:
+            new_pts = [(float(p[0]), float(p[1])) for p in points]
 
-    def safe_start(self):
-        """Start with auto-recovery"""
-        try:
-            self.start()
-        except Exception as e:
-            print("[SMU] Start failed → retrying with refresh")
-            self.refresh()
-            self.start()
+        self.blocks[title] = new_pts
 
-    # ---------- HELPERS ----------
-    def list(self):
-        return [d.serial for d in self.devices]
-
-    def get(self, serial):
-        for d in self.session.devices:
-            if d.serial == serial:
-                return d
-        raise ValueError("Device not found")
-
-    # ---------- CONTEXT ----------
-    def __enter__(self):
-        self.safe_start()
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        self.stop()
-
-    # ---------- SIGNAL ----------
-    def _handle_exit(self, signum):
-        print(f"\n[SMU] Signal {signum} received")
-        self.stop()
-        sys.exit(0)
-
-    # ---------- PRINT ----------
-    def __str__(self):
-        out = ["SMU:"]
-        for i, d in enumerate(self.devices):
-            out.append(f"  [{i}] {d}")
-        return "\n".join(out)
+    def reset_all(self) -> None:
+        """Reset all blocks to their default templates."""
+        for title in self.blocks.keys():
+            if "measure v" in title.lower() or "source v" in title.lower():
+                self.blocks[title] = [tuple(x) for x in self.DEFAULT_TEMPLATES["v"]]
+            elif "measure i" in title.lower() or "source i" in title.lower():
+                self.blocks[title] = [tuple(x) for x in self.DEFAULT_TEMPLATES["i"]]
+            else:
+                # preserve unknown block titles but clear values if they don't match a known template
+                self.blocks[title] = []
+def get(session: Session,serial:str)->SessionDevice:
+    for dev in session.devices:
+        if dev.serial == serial:
+            return dev
+    else:
+        for dev in session.available_devices:
+            if dev.serial == serial:
+                session.add_device(dev)
+                return get(session,serial)
+    raise ValueError(f"No device with serial {serial} found in session")

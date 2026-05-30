@@ -1,3 +1,5 @@
+# ADALM1000 calibration file
+
 # Channel A, measure V
 </>
 <0.0000, 0.0000>
@@ -13,8 +15,8 @@
 
 # Channel A, source V
 </>
-<0.0000, 0.0044>
-<2.5000, 2.5077>
+<0.0000, 0.0000>
+<2.5000, 2.5000>
 <\>
 
 # Channel A, source I
@@ -27,7 +29,7 @@
 # Channel B, measure V
 </>
 <0.0000, 0.0000>
-<2.5000, 2.5000>
+<3.0000, 3.5000>
 <\>
 
 # Channel B, measure I
