@@ -1,12 +1,6 @@
-# smu.py
-
-import signal
-import sys
-import atexit
 import time
 from pathlib import Path
-from pysmu import Session, Mode
-import numpy as np
+
 def reconnect(serial_number):
     sysfs_usb = Path('/sys/bus/usb/devices/')
     
@@ -25,7 +19,7 @@ def reconnect(serial_number):
                     try:
                         print("Simulating unplug...")
                         authorized_file.write_text('0\n')
-                        time.sleep(0.2) 
+                        time.sleep(2) 
                         
                         print("Simulating replug...")
                         authorized_file.write_text('1\n')
@@ -76,11 +70,11 @@ def reconnect_all(product_title="ADALM1000"):
                     try:
                         print("  Simulating unplug...")
                         authorized_file.write_text('0\n')
-                        time.sleep(0.2)
+                        time.sleep(2)
                         
                         print("  Simulating replug...")
                         authorized_file.write_text('1\n')
-                        time.sleep(0.1)
+                        time.sleep(1)
                         
                         print("  Reconnect successful.")
                         reconnected_count += 1
@@ -112,103 +106,3 @@ if __name__ == "__main__":
     
     # Reconnect all ADALM1000 devices
     reconnect_all("ADALM1000")
-# =========================
-# Channel Wrapper
-# =========================
-class Channel:
-    def __init__(self, ch_name, ctrl,dev_serial):
-        self._ch_name = ch_name
-        self.ctrl = ctrl
-        self.dev_serial = dev_serial
-
-    # ---------- OUTPUT ----------
-    @property
-    def dev(self):
-        return self.ctrl.get(self.dev_serial)
-    @property
-    def _ch(self):
-        return self.ctrl.get(self.dev_serial).channels[self._ch_name]
-    def dc(self, v):
-        """Set DC voltage"""
-        if not self._ch.mode == Mode.SVMI:
-            self._ch.mode = Mode.SVMI
-        self._ch.constant(v)
-    # ---------- INPUT ----------
-    def dcr(self,i=100,mes="V"):
-        """Read DC voltage"""
-        self.dev.flush(-1,True)
-        time.sleep(0.05)
-        l,k=zip(*self._ch.read(i))
-        return  np.average(l) if mes=="V" else np.average(k)
-    def __str__(self):
-        return f"Channel(mode={self._ch.mode})"
-# =========================
-# Device Wrapper
-# =========================
-class Device:
-    def __init__(self, dev, ctrl):
-        self.ctrl = ctrl
-
-        self.serial = dev.serial
-        self.fw = dev.fwver
-        self.hw = dev.hwver
-
-        self.ch_a = Channel("A", ctrl,dev.serial)
-        self.ch_b = Channel("B", ctrl,dev.serial)
-    @property
-    def _dev(self):
-        return self.ctrl.get(self.serial)
-    def led(self, val):
-        self._dev.set_led(val)
-
-    def __str__(self):
-        return f"Device {self.serial} | FW:{self.fw} HW:{self.hw}"
-
-
-# =========================
-# SMU Manager
-# =========================
-class SMU:
-    def __init__(self):
-        
-        self.session = None
-        self.running = False
-        # -------- STEP 1: kill stale sessions --------
-        self._cleanup_session()
-        # -------- STEP 3: scan devices --------
-        self.scan()
-    def _cleanup_session(self):
-        self.reconnect_all()
-        self.session = Session()
-
-    @property
-    def devices(self):
-        return [Device(dev, self) for dev in self.session.devices]
-    # ---------- CORE ----------
-    def scan(self):
-        self.session.scan()
-    def start(self,i=0):
-        if not self.running:
-            self.session.start(i)
-            self.running = True
-            print("[SMU] Session started")
-    def reconnect(self,serial):
-        reconnect(serial)
-    def reconnect_all(self):
-        reconnect_all("ADALM1000")
-    # ---------- HELPERS ----------
-    def list(self):
-        return [d.serial for d in self.devices]
-
-    def get(self, serial):
-        for d in self.session.devices:
-            if d.serial == serial:
-                return d
-        raise ValueError("Device not found")
-
-    # ---------- PRINT ----------
-    def __str__(self):
-        out = ["SMU:"]
-        for i, d in enumerate(self.devices):
-            out.append(f"  [{i}] {d}")
-        return "\n".join(out)
