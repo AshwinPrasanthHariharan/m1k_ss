@@ -120,9 +120,12 @@ class SMU:
         return [Device(dev, self) for dev in self.session.devices]
     # ---------- CORE ----------
     def scan(self):
-        self.session.flush()
-        self.session.__dealloc__()
-        self.session=Session()
+        try:
+            self.session.flush()
+        except:
+            pass
+
+        self.session = Session()
     def start(self,i=0):
         if not self.running:
             self.session.start(i)
