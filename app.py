@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go #added by neeraj
 import time
 
 # --------------------------------------------------
@@ -99,43 +100,83 @@ else:
         # CREATE NEW FIGURE EACH LOOP
         # ------------------------------------------
 
-        fig, ax = plt.subplots(
-            figsize=(10, 6)
-        )
+        # fig, ax = plt.subplots(
+        #     figsize=(10, 6)
+        # )
 
-        ax.scatter(
-            vin_live,
-            vout_live,
-            s=80
-        )
+        # ax.scatter(
+        #     vin_live,
+        #     vout_live,
+        #     s=80
+        # )
 
-        ax.set_title(
-            "Live DC Sweep Characterization"
-        )
+        # ax.set_title(
+        #     "Live DC Sweep Characterization"
+        # )
 
-        ax.set_xlabel(
-            "Vin (V)"
-        )
+        # ax.set_xlabel(
+        #     "Vin (V)"
+        # )
 
-        ax.set_ylabel(
-            "Vout (V)"
-        )
+        # ax.set_ylabel(
+        #     "Vout (V)"
+        # )
 
-        ax.set_xlim(
-            v_start,
-            v_end
-        )
+        # ax.set_xlim(
+        #     v_start,
+        #     v_end
+        # )
 
-        ax.set_ylim(
-            np.min(vout_array) - 0.5,
-            np.max(vout_array) + 0.5
-        )
+        # ax.set_ylim(
+        #     np.min(vout_array) - 0.5,
+        #     np.max(vout_array) + 0.5
+        # )
 
-        plot_placeholder.pyplot(fig)
+        # plot_placeholder.pyplot(fig)
 
         # ------------------------------------------
         # STATUS
         # ------------------------------------------
+
+        # ------------------------------------------
+        # PLOTLY LIVE GRAPH # added by neeraj
+        # ------------------------------------------
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(
+                x=vin_live,
+                y=vout_live,
+                mode="lines+markers",
+                name="DC Sweep"
+            )
+        )
+
+        fig.update_layout(
+
+            title="Live DC Sweep Characterization",
+
+            xaxis=dict(
+                title="Vin (V)",
+                range=[v_start, v_end]
+            ),
+
+            yaxis=dict(
+                title="Vout (V)",
+                range=[
+                    np.min(vout_array) - 0.5,
+                    np.max(vout_array) + 0.5
+                ]
+            ),
+
+            template="plotly_dark"
+        )
+
+        plot_placeholder.plotly_chart(
+            fig,
+            use_container_width=True
+        )
 
         status_placeholder.markdown(
             f"""
@@ -162,4 +203,4 @@ else:
 
         time.sleep(0.15)
 
-        plt.close(fig)
+        #plt.close(fig) //modified by neeraj
