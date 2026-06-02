@@ -401,14 +401,14 @@ class Device:
     def _dev(self):
         return self.ctrl.get(self.serial)
     def write_calibration(self,path):
-        self.ctrl.reconnect(self.serial)
-        subprocess.run(["smu", "-w", str(path)])
         time.sleep(0.5)
-        self.ctrl._cleanup_session()
+        subprocess.run(["smu", "-w", str(path)])
+        
         
 
-        
-
+    def pulse_in_out(freq,amp,t=None,in_ch="A",out_ch="B"):
+        if t is None:
+            t=(1/freq)*4*10_000
     def led(self, val):
         self._dev.set_led(val)
 

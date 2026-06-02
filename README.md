@@ -288,3 +288,18 @@ while validating them using **real-world experimental data**.
 
 ---
 
+**Channel B Calibration**
+- Use this quick step-by-step to run Channel B calibration as shown in the repository.
+- **Script:**: See [reaadcal_b.py](reaadcal_b.py#L1-L200) for a runnable example.
+- **Reset calibration:**: Reset default calibration blocks and the Channel B measure block:
+  - `mgr = CalibrationManager("m1k.cal")`
+  - `mgr.reset_all()`
+  - `mgr.reset_block('b', "measure V")`
+  - `mgr.save()`
+- **Write to device:**: Push `m1k.cal` to the attached M1K device:
+  - `smu -w m1k.cal` (or `smu.devices[0].write_calibration("m1k.cal")` from Python)
+- **Restart session:**: Re-open the PySMU session so the device loads the new calibration:
+  - Recreate `Session()` and call `session.add_all()` / `smu.start(0)` as in the example script.
+- **Verify & measure:**: Set Channel B to `Mode.SVMI`, apply a DC level and read back samples to measure deviation. The `calibrate_write_read()` helper in the script runs a sweep and reports deviations.
+- **Notes:**: The script includes `time.sleep()` delays and a brief `subprocess.run(["smu","-w","m1k.cal"])` call — keep those in case the device needs a short pause between operations.
+
