@@ -3,11 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 smu=SMU()
-print(smu.devices[0])
 mgr=CalibrationManager("m1k.cal")
-mgr.reset_all()
-mgr.save()
-time.sleep(0.5)
 def calibrate_write_read(channel, v_start=0, v_stop=5, steps=11, samples=100, settle_s=1):
     write_values = np.linspace(v_start, v_stop, steps).tolist()
     read_values = []
@@ -37,9 +33,10 @@ def print_deviation(label, write_values, read_values):
 #Channel A Calibration
 mgr.reset_block('a',"measure V")
 mgr.save()
-smu.devices[0].write_calibration("m1k.cal")
-time.sleep(0.5)
 smu.session._close()
+time.sleep(0.5)
+subprocess.run(["smu", "-w", "m1k.cal"])
+time.sleep(1)
 smu.session=Session()
 smu.session.add_all()
 smu.start(0)
@@ -50,9 +47,9 @@ print_deviation("Before Calibration", k, l)
 print(smu.devices[0].ch_a.dcr())
 mgr.recab("measure V","a",zip(k,l))
 mgr.save()
-smu.devices[0].write_calibration("m1k.cal")
-time.sleep(0.5)
 smu.session._close()
+subprocess.run(["smu", "-w", "m1k.cal"])
+time.sleep(1)
 #Channel A Re-Read
 smu.session=Session()
 smu.session.add_all()
