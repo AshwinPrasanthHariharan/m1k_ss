@@ -4,13 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go #added by neeraj
 import time
-
+import requests
 # --------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------
-
+url = "http://localhost:8000/"
 st.set_page_config(layout="wide")
-
 st.title("ADALM1000 DC Sweep Signal Analysis")
 
 st.markdown(
@@ -93,6 +92,13 @@ else:
         current_vout = vout_array[i]
 
         vin_live.append(current_vin)
+        requests.get(url+"sva/"+str(current_vin))
+        time.sleep(0.1)
+        response = requests.get(url+"rva")
+        if response.status_code == 200:
+            current_vout = response.json().get("channel_a", 0.0)
+        else:
+            current_vout = 0.0  # Default to 0 if there's an error  
 
         vout_live.append(current_vout)
 
