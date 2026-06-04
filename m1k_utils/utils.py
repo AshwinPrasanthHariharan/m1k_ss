@@ -4,7 +4,8 @@ from collections import OrderedDict
 from typing import List, Tuple, Union, Iterable, OrderedDict as _OD, NamedTuple
 import time
 from pathlib import Path
-from pysmu import Session, Mode
+from pysmu import Session, Mode ,Signal 
+sig=Signal()
 import numpy as np
 import subprocess
 class CalibrationPoint(NamedTuple):
@@ -12,7 +13,26 @@ class CalibrationPoint(NamedTuple):
     left: float
     right: float
 
-
+def measure_gain_phase_at_freqs(s,dev, ps,amp):
+    results = []
+    for p in ps:
+        sine_wave = sig.sine(samples=10*p, midpoint=amp[0], peak=amp[1], period=p, phase=0)
+        dev.channels["A"].write(sine_wave,-1)
+        time.sleep(1)  # Allow some time for the signal to stabilize
+        s.start(10*p+100)
+        time.sleep(1)  # Allow some time for the measurement to complete
+        data = dev.read(100)
+        data = dev.read(10*p)
+        list1, list3 = [], []
+        for item in data:
+            if isinstance(item, tuple):
+                (a, b), (c, d) = item
+                list1.append(a)
+                list3.append(c)
+        print(f"Measured {len(list1)} samples for period {p}")
+        result = (list1, list3)
+        results.append(result)
+    return results
 def _serials_match(expected: str, current: str) -> bool:
     expected = str(expected).strip().strip('\x00')
     current = str(current).strip().strip('\x00')
@@ -400,15 +420,23 @@ class Device:
     @property
     def _dev(self):
         return self.ctrl.get(self.serial)
-    def write_calibration(self,path):
-        time.sleep(0.5)
-        subprocess.run(["smu", "-w", str(path)])
-        
         
 
-    def pulse_in_out(freq,amp,t=None,in_ch="A",out_ch="B"):
-        if t is None:
-            t=(1/freq)*4*10_000
+    def pulse_in_out(self,ps,amp=(0,5),t=None,in_ch="A",out_ch="B"):
+        try:
+            self.ctrl.session.cancel()
+        except Exception as e:
+            print(f"Warning: Could not cancel session before pulse_in_out: {e}")
+        try:
+            self._dev.channels[out_ch].mode = Mode.HI_Z
+            self._dev.channels[in_ch].mode = Mode.SVMI
+        except Exception as e:
+            print(f"Error occurred while setting channel modes: {e}")
+        self._dev.flush(-1,True)
+        time.sleep(0.05)
+        res=measure_gain_phase_at_freqs(self.ctrl.session,self._dev, ps,amp)
+        return res
+
     def led(self, val):
         self._dev.set_led(val)
 
