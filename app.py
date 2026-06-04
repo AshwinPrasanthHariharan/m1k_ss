@@ -55,10 +55,6 @@ vin_array = np.arange(
     v_step
 )
 
-vout_array = (
-    0.65 * vin_array + 0.15
-)
-
 # --------------------------------------------------
 # READY SCREEN
 # --------------------------------------------------
@@ -89,7 +85,6 @@ else:
 
         current_vin = vin_array[i]
 
-        current_vout = vout_array[i]
 
         vin_live.append(current_vin)
         requests.get(url+"sva/"+str(current_vin))
@@ -144,10 +139,6 @@ else:
         # STATUS
         # ------------------------------------------
 
-        # ------------------------------------------
-        # PLOTLY LIVE GRAPH # added by neeraj
-        # ------------------------------------------
-
         fig = go.Figure()
 
         fig.add_trace(
@@ -171,8 +162,7 @@ else:
             yaxis=dict(
                 title="Vout (V)",
                 range=[
-                    np.min(vout_array) - 0.5,
-                    np.max(vout_array) + 0.5
+                    0,5
                 ]
             ),
 
