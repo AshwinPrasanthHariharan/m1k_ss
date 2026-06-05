@@ -1,3 +1,4 @@
+#Channel A Re-Rereadd
 from m1k_utils import *
 import time
 import numpy as np
@@ -30,23 +31,17 @@ def print_deviation(label, write_values, read_values):
         f"{label} Summary: mean abs deviation = {np.mean(abs_deviations):.6f} V, "
         f"max abs deviation = {np.max(abs_deviations):.6f} V"
     )
-#Channel A Calibration
-mgr.reset_block('a',"measure V")
-mgr.save()
+smu.session.add_all()
+smu.start(0)
+smu.devices[0].ch_a.mode=Mode.SVMI
+ki,li=calibrate_write_read(smu.devices[0].ch_a)
+print("After Calibration:")
+print_deviation("After Calibration", ki, li)
+print(smu.devices[0].ch_a.dcr())
 smu.session._close()
-time.sleep(0.5)
-subprocess.run(["smu", "-w", "m1k.cal"])
-time.sleep(1)
 smu.session=Session()
 smu.session.add_all()
 smu.start(0)
 smu.devices[0].ch_a.mode=Mode.SVMI
-k,l=calibrate_write_read(smu.devices[0].ch_a)
-print("Before Calibration:")
-print_deviation("Before Calibration", k, l)
-print(smu.devices[0].ch_a.dcr())
-mgr.recab("measure V","a",zip(k,l))
-mgr.save()
+time.sleep(0.5)
 smu.session._close()
-subprocess.run(["smu", "-w", "m1k.cal"])
-time.sleep(1)
