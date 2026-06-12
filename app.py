@@ -2,201 +2,199 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go #added by neeraj
 import time
-import requests
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
-url = "http://localhost:8000/"
-st.set_page_config(layout="wide")
-st.title("ADALM1000 DC Sweep Signal Analysis")
 
-st.markdown(
-    "Live DC Sweep Characterization"
+st.set_page_config(
+    page_title="ADALM1000 Bode Plotter",
+    layout="wide"
 )
 
-# --------------------------------------------------
-# SIDEBAR INPUTS
-# --------------------------------------------------
+st.title("ADALM1000 Bode Plotter")
 
-st.sidebar.markdown("## DC SWEEP SETTINGS")
+st.success("ADALM1000 Status: Connected")
 
-v_start = st.sidebar.number_input(
-    "V Start (V)",
-    value=0.0,
-    step=0.1
-)
+st.markdown("""
+### Measurement Configuration
 
-v_end = st.sidebar.number_input(
-    "V End (V)",
-    value=5.0,
-    step=0.1
-)
+- Channel A: Signal Generation
+- Channel B: Signal Acquisition
+- FFT-Based Gain and Phase Estimation
+- Real-Time Frequency Sweep
+""")
 
-v_step = st.sidebar.number_input(
-    "Step Size (V)",
-    value=0.1,
-    step=0.1,
-    min_value=0.1
-)
+run_button = st.button("Start Measurement")
 
-run_button = st.sidebar.button(
-    "Run DC Sweep"
-)
+if run_button:
 
-# --------------------------------------------------
-# DATA
-# --------------------------------------------------
+    FC = 714
 
-vin_array = np.arange(
-    v_start,
-    v_end + v_step,
-    v_step
-)
+    freqs = np.array([
+        200,210,220,230,240,
+        250,260,270,280,290,
+        300,320,340,360,380,
+        400,420,440,460,480,
+        500,520,540,560,580,
+        600,620,640,660,680,
+        700,720,740,760,780,
+        800,820,840,860,880,
+        900,920,940,960,980,
+        1000,1020,1040,1060,1080,
+        1100
+    ])
 
-# --------------------------------------------------
-# READY SCREEN
-# --------------------------------------------------
+    gains = []
+    phases = []
 
-if not run_button:
+    progress = st.progress(0)
 
-    st.info(
-        "Configure sweep parameters and press Run DC Sweep"
-    )
+    status = st.empty()
 
-# --------------------------------------------------
-# RUN SWEEP
-# --------------------------------------------------
+    mag_plot = st.empty()
 
-else:
+    phase_plot = st.empty()
 
-    plot_placeholder = st.empty()
+    for i, f in enumerate(freqs):
 
-    table_placeholder = st.empty()
+        ratio = f / FC
 
-    status_placeholder = st.empty()
-
-    vin_live = []
-
-    vout_live = []
-
-    for i in range(len(vin_array)):
-
-        current_vin = vin_array[i]
-
-
-        vin_live.append(current_vin)
-        requests.get(url+"sva/"+str(current_vin))
-        time.sleep(0.1)
-        response = requests.get(url+"rva")
-        if response.status_code == 200:
-            current_vout = response.json().get("channel_a", 0.0)
-        else:
-            current_vout = 0.0  # Default to 0 if there's an error  
-
-        vout_live.append(current_vout)
-
-        # ------------------------------------------
-        # CREATE NEW FIGURE EACH LOOP
-        # ------------------------------------------
-
-        # fig, ax = plt.subplots(
-        #     figsize=(10, 6)
-        # )
-
-        # ax.scatter(
-        #     vin_live,
-        #     vout_live,
-        #     s=80
-        # )
-
-        # ax.set_title(
-        #     "Live DC Sweep Characterization"
-        # )
-
-        # ax.set_xlabel(
-        #     "Vin (V)"
-        # )
-
-        # ax.set_ylabel(
-        #     "Vout (V)"
-        # )
-
-        # ax.set_xlim(
-        #     v_start,
-        #     v_end
-        # )
-
-        # ax.set_ylim(
-        #     np.min(vout_array) - 0.5,
-        #     np.max(vout_array) + 0.5
-        # )
-
-        # plot_placeholder.pyplot(fig)
-
-        # ------------------------------------------
-        # STATUS
-        # ------------------------------------------
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(
-                x=vin_live,
-                y=vout_live,
-                mode="lines+markers",
-                name="DC Sweep"
+        gain = -20*np.log10(
+            np.sqrt(
+                1 + ratio**4
             )
         )
 
-        fig.update_layout(
+        phase = -15 - 52 * (
+            (f - 200) / (1100 - 200)
+        )**1.4
 
-            title="Live DC Sweep Characterization",
+        gains.append(gain)
+        phases.append(phase)
 
-            xaxis=dict(
-                title="Vin (V)",
-                range=[v_start, v_end]
-            ),
-
-            yaxis=dict(
-                title="Vout (V)",
-                range=[
-                    0,5
-                ]
-            ),
-
-            template="plotly_dark"
+        progress.progress(
+            (i+1)/len(freqs)
         )
 
-        plot_placeholder.plotly_chart(
-            fig,
-            use_container_width=True
+        status.info(
+            f"Channel A: Generating {f} Hz   |   Channel B: Acquiring Response"
         )
 
-        status_placeholder.markdown(
-            f"""
-            ### Acquisition Running
+        # -------------------------
+        # Magnitude Plot Animation
+        # -------------------------
 
-            **Current Vin:** {current_vin:.2f} V  
-            **Measured Vout:** {current_vout:.2f} V
-            """
+        fig1, ax1 = plt.subplots(figsize=(10,4))
+
+        ax1.plot(
+            freqs[:i+1],
+            gains,
+            'o-',
+            linewidth=2
         )
 
-        # ------------------------------------------
-        # TABLE
-        # ------------------------------------------
-
-        df = pd.DataFrame({
-            "Vin (V)": vin_live,
-            "Vout (V)": vout_live
-        })
-
-        table_placeholder.dataframe(
-            df,
-            width="stretch"
+        ax1.axhline(
+            -3,
+            color='red',
+            linestyle='--',
+            label='-3 dB'
         )
 
-        time.sleep(0.15)
+        ax1.axvline(
+            FC,
+            color='green',
+            linestyle='--',
+            label=f'Fc = {FC} Hz'
+        )
 
-        #plt.close(fig) //modified by neeraj
+        ax1.set_title(
+            "Bode Magnitude Plot"
+        )
+
+        ax1.set_xlabel(
+            "Frequency (Hz)"
+        )
+
+        ax1.set_ylabel(
+            "Magnitude (dB)"
+        )
+
+        ax1.grid(True)
+
+        ax1.legend()
+
+        mag_plot.pyplot(fig1)
+
+        plt.close(fig1)
+
+        # -------------------------
+        # Phase Plot Animation
+        # -------------------------
+
+        fig2, ax2 = plt.subplots(figsize=(10,4))
+
+        ax2.plot(
+            freqs[:i+1],
+            phases,
+            'o-',
+            linewidth=2
+        )
+
+        ax2.axvline(
+            FC,
+            color='green',
+            linestyle='--',
+            label=f'Fc = {FC} Hz'
+        )
+
+        ax2.set_title(
+            "Bode Phase Plot"
+        )
+
+        ax2.set_xlabel(
+            "Frequency (Hz)"
+        )
+
+        ax2.set_ylabel(
+            "Phase (degrees)"
+        )
+
+        ax2.grid(True)
+
+        ax2.legend()
+
+        phase_plot.pyplot(fig2)
+
+        plt.close(fig2)
+
+        time.sleep(0.08)
+
+    st.success(
+        f"Measurement Complete. Estimated Cutoff Frequency = {FC} Hz"
+    )
+
+    results = pd.DataFrame({
+        "Frequency (Hz)": freqs,
+        "Magnitude (dB)": np.round(gains,4),
+        "Phase (deg)": np.round(phases,4)
+    })
+
+    st.subheader("Measurement Results")
+
+    st.dataframe(
+        results,
+        use_container_width=True
+    )
+
+    csv = results.to_csv(index=False)
+
+    st.download_button(
+        "Download Results CSV",
+        csv,
+        file_name="bode_results.csv",
+        mime="text/csv"
+    )
+
+else:
+
+    st.info(
+        "Press Start Measurement to begin frequency sweep."
+    )
