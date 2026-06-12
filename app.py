@@ -89,9 +89,9 @@ else:
         vin_live.append(current_vin)
         requests.get(url+"sva/"+str(current_vin))
         time.sleep(0.1)
-        response = requests.get(url+"rva")
+        response = requests.get(url+"rvb")
         if response.status_code == 200:
-            current_vout = response.json().get("channel_a", 0.0)
+            current_vout = response.json().get("channel_b", 0.0)
         else:
             current_vout = 0.0  # Default to 0 if there's an error  
 

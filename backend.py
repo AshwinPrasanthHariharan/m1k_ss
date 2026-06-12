@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+import uvicorn
 from m1k_utils import *
 
 app = FastAPI()
@@ -62,3 +63,10 @@ def set_voltage(voltage: float):
         return {"message": "Voltage set successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+if __name__ == "__main__":
+    uvicorn.run(
+        "backend:app", 
+        host="0.0.0.0", 
+        port=8000, 
+        reload=True
+    )

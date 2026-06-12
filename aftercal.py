@@ -45,3 +45,19 @@ smu.start(0)
 smu.devices[0].ch_a.mode=Mode.SVMI
 time.sleep(0.5)
 smu.session._close()
+
+smu.session=Session()
+smu.session.add_all()
+smu.start(0)
+smu.devices[0].ch_b.mode=Mode.SVMI
+ki_b,li_b=calibrate_write_read(smu.devices[0].ch_b)
+print("After Calibration Channel B:")
+print_deviation("After Calibration Channel B", ki_b, li_b)
+print(smu.devices[0].ch_b.dcr())
+smu.session._close()
+smu.session=Session()
+smu.session.add_all()
+smu.start(0)
+smu.devices[0].ch_b.mode=Mode.SVMI
+time.sleep(0.5)
+smu.session._close()

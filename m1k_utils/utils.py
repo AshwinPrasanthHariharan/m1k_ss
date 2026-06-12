@@ -13,26 +13,23 @@ class CalibrationPoint(NamedTuple):
     left: float
     right: float
 
-def measure_gain_phase_at_freqs(s,dev, ps,amp):
-    results = []
-    for p in ps:
-        sine_wave = sig.sine(samples=10*p, midpoint=amp[0], peak=amp[1], period=p, phase=0)
-        dev.channels["A"].write(sine_wave,-1)
-        time.sleep(1)  # Allow some time for the signal to stabilize
-        s.start(10*p+100)
-        time.sleep(1)  # Allow some time for the measurement to complete
-        data = dev.read(100)
-        data = dev.read(10*p)
-        list1, list3 = [], []
-        for item in data:
-            if isinstance(item, tuple):
-                (a, b), (c, d) = item
-                list1.append(a)
-                list3.append(c)
-        print(f"Measured {len(list1)} samples for period {p}")
-        result = (list1, list3)
-        results.append(result)
-    return results
+def measure_gain_phase_at_freqs(s,dev, p,amp):
+    sine_wave = sig.sine(samples=10*p, midpoint=amp[0], peak=amp[1], period=p, phase=0)
+    dev.channels["A"].write(sine_wave,-1)
+    time.sleep(1)  # Allow some time for the signal to stabilize
+    s.start(10*p+100)
+    time.sleep(1)  # Allow some time for the measurement to complete
+    data = dev.read(100)
+    data = dev.read(10*p)
+    list1, list3 = [], []
+    for item in data:
+        if isinstance(item, tuple):
+            (a, b), (c, d) = item
+            list1.append(a)
+            list3.append(c)
+    print(f"Measured {len(list1)} samples for period {p}")
+    result = (list1, list3)
+    return result
 def _serials_match(expected: str, current: str) -> bool:
     expected = str(expected).strip().strip('\x00')
     current = str(current).strip().strip('\x00')
