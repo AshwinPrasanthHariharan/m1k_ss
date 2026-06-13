@@ -107,7 +107,7 @@ if page == "Bode Plot":
         mag_fig.update_layout(
             title="Bode Magnitude",
             xaxis=dict(title="Frequency (Hz)", type="log"),
-            yaxis=dict(title="Magnitude (dB)"),
+            yaxis=dict(title="Magnitude (dB)", range=[-10, 3]),
             template="plotly_dark"
         )
 
@@ -124,7 +124,7 @@ if page == "Bode Plot":
         phase_fig.update_layout(
             title="Bode Phase",
             xaxis=dict(title="Frequency (Hz)", type="log"),
-            yaxis=dict(title="Phase (deg)"),
+            yaxis=dict(title="Phase (deg)", range=[-180, 0]),
             template="plotly_dark"
         )
 
@@ -142,6 +142,24 @@ if page == "Bode Plot":
         time.sleep(0.15)
 
     status_placeholder.markdown("### Sweep complete")
+    
+    # Calculate cut-off frequency (-3dB point)
+    mag_array = np.array(mag_live)
+    peak_mag = np.nanmax(mag_array)
+    cutoff_mag = peak_mag - 3
+    
+    # Find frequency closest to -3dB point
+    mag_diff = np.abs(mag_array - cutoff_mag)
+    cutoff_idx = np.nanargmin(mag_diff)
+    cutoff_freq = freq_live[cutoff_idx]
+    
+    # Display cut-off frequency
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Peak Magnitude (dB)", f"{peak_mag:.2f}")
+    with col2:
+        st.metric("-3dB Cut-off Frequency (Hz)", f"{cutoff_freq:.2f}")
+    
     st.stop()
 
 st.title("ADALM1000 DC Sweep Signal Analysis")
@@ -333,4 +351,3 @@ else:
 
         time.sleep(0.15)
 
-        #plt.close(fig) //modified by neeraj

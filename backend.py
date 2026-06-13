@@ -37,7 +37,7 @@ def gain_phase(inp, out):
     freq_cycles_per_sample = k / N
 
     # 2. Hardware delay compensation (0.42 samples)
-    hardware_delay_samples = 0.42 
+    hardware_delay_samples = 0.456 
     
     # Calculate how many degrees of phase lag this time delay causes at this specific frequency
     phase_error_deg = freq_cycles_per_sample * hardware_delay_samples * 360.0
@@ -112,7 +112,7 @@ def set_voltage(voltage: float):
         raise HTTPException(status_code=500, detail=str(e))
 @app.get("/pulse/{in_ch}/{out_ch}/{frequency}")
 def trigger_pulse( frequency: float, in_ch: str, out_ch: str):
-    return gain_phase(*(smu.devices[0].pulse_in_out(1/frequency*10_000, in_ch=in_ch, out_ch=out_ch)))
+    return gain_phase(*(smu.devices[0].pulse_in_out(1/frequency*100000, in_ch=in_ch, out_ch=out_ch)))
 
 if __name__ == "__main__":
     uvicorn.run(
