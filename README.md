@@ -1,5 +1,5 @@
 # 📊 Frequency Response Analysis, System Identification & VI Characterization using ADALM M1K
-
+This project develops a Python-based experimental framework for analyzing and identifying electrical systems using the ADALM1000 (M1K).
 ## 🚀 Overview
 
 This project develops a **Python-based experimental framework** for analyzing and identifying electrical systems using the **ADALM1000 (M1K)**.
